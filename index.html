@@ -1,0 +1,99 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Transfers do Indexer Monad</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 10px; text-align: left; }
+        th { background-color: #333; color: white; }
+    </style>
+</head>
+<body>
+
+<h2>Transfers do Indexer Monad</h2>
+<table>
+    <thead>
+        <tr>
+            <th>From</th>
+            <th>To</th>
+            <th>Amount</th>
+            <th>Block</th>
+            <th>Tx Hash</th>
+        </tr>
+    </thead>
+    <tbody id="transfersTable">
+        <tr><td colspan="5">Carregando transfers...</td></tr>
+    </tbody>
+</table>
+
+<script>
+    const apiUrl = "https://api.ghostlogs.xyz/gg/pub/7f367173-a0d4-4744-b4b9-aac75e93baa0/ghostgraph";
+
+    async function fetchTransfers() {
+        try {
+            const query = `
+            query {
+                transfers(orderBy: "block", orderDirection: "desc", limit: 50) {
+                    items {
+                        from
+                        to
+                        amount
+                        block
+                        transactionHash
+                    }
+                }
+            }`;
+            
+            const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ query })
+            });
+
+            const result = await response.json();
+            const transfers = result.data.transfers.items;
+            renderTransfers(transfers);
+
+        } catch (error) {
+            document.getElementById("transfersTable").innerHTML = `<tr><td colspan="5">Erro ao carregar transfers: ${error.message}</td></tr>`;
+        }
+    }
+
+    function renderTransfers(transfers) {
+        const table = document.getElementById("transfersTable");
+        table.innerHTML = ""; // limpa antes de atualizar
+        
+        if (transfers.length === 0) {
+            table.innerHTML = "<tr><td colspan='5'>Nenhum transfer encontrado.</td></tr>";
+            return;
+        }
+
+        transfers.forEach(tx => {
+            const row = `
+                <tr>
+                    <td>${tx.from}</td>
+                    <td>${tx.to}</td>
+                    <td>${formatAmount(tx.amount)} tokens</td>
+                    <td>${tx.block}</td>
+                    <td><a href="https://testnet-explorer.monad.xyz/tx/${tx.transactionHash}" target="_blank">${tx.transactionHash.substring(0, 10)}...</a></td>
+                </tr>
+            `;
+            table.innerHTML += row;
+        });
+    }
+
+    function formatAmount(amount) {
+        return (BigInt(amount) / BigInt(10 ** 18)).toString();
+    }
+
+    fetchTransfers();
+    setInterval(fetchTransfers, 30000); // atualiza a cada 30 segundos
+</script>
+
+</body>
+</html>
